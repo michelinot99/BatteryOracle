@@ -7,33 +7,30 @@ struct PopoverView: View {
 
     enum Tab: String, CaseIterable { case forecast = "Previsione", habits = "Abitudini" }
 
+    /// A MenuBarExtra window keeps the size it opened with, so both tabs share one fixed height.
+    static let tabHeight: CGFloat = 368
+
     /// View-local state lives here: the Command Line Tools SDK ships SwiftUI's `@State` as a macro without its plugin.
     final class PopoverState: ObservableObject {
         @Published var tab = CommandLine.arguments.contains("--habits") ? Tab.habits : Tab.forecast
-        @Published var showSettings = CommandLine.arguments.contains("--settings")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if ui.showSettings {
-                SettingsView(m: m) { withAnimation(.smooth) { ui.showSettings = false } }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
+            header
+            if m.battery == nil {
+                noBattery
+            } else if let o = m.outlook {
+                VerdictCard(o: o, m: m)
+                CapsuleTabs(selection: $ui.tab, tint: o.verdict.color)
                 Group {
-                    header
-                    if m.battery == nil {
-                        noBattery
-                    } else if let o = m.outlook {
-                        VerdictCard(o: o, m: m)
-                        CapsuleTabs(selection: $ui.tab, tint: o.verdict.color)
-                        if ui.tab == .forecast { ForecastChart(o: o, m: m) } else { HabitsView(m: m) }
-                    } else {
-                        learning
-                    }
-                    footer
+                    if ui.tab == .forecast { ForecastChart(o: o, m: m) } else { HabitsView(m: m) }
                 }
-                .transition(.move(edge: .leading).combined(with: .opacity))
+                .frame(height: Self.tabHeight, alignment: .top)
+            } else {
+                learning
             }
+            footer
         }
         .padding(16)
         .frame(width: 372)
@@ -101,7 +98,7 @@ struct PopoverView: View {
             Spacer()
             Button { m.forecastNow() } label: { Image(systemName: "arrow.clockwise").frame(width: 22, height: 22) }
                 .help("Ricalcola la previsione").disabled(m.isForecasting)
-            Button { withAnimation(.smooth) { ui.showSettings = true } } label: { Image(systemName: "gearshape").frame(width: 22, height: 22) }
+            Button { SettingsWindow.show(m) } label: { Image(systemName: "gearshape").frame(width: 22, height: 22) }
                 .help("Impostazioni")
         }
         .buttonStyle(.plain)
@@ -276,8 +273,9 @@ struct ForecastChart: View {
                         else { hoverState.date = nil }
                     }
             }
-            .frame(height: 150)
+            .frame(minHeight: 150, maxHeight: .infinity)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .card()
     }
 }

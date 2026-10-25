@@ -66,7 +66,8 @@ enum PreviewWindow {
             effect.layer?.backgroundColor = NSColor(white: 0.14, alpha: 1).cgColor
             w.appearance = NSAppearance(named: .darkAqua)
         }
-        let host = NSHostingView(rootView: PopoverView(m: m).padding(.top, 18)
+        let root = CommandLine.arguments.contains("--settings") ? AnyView(SettingsView(m: m).padding(16)) : AnyView(PopoverView(m: m))
+        let host = NSHostingView(rootView: root.padding(.top, 18)
             .background(snapshot == nil ? Color.clear : Color(white: 0.14))
             .preferredColorScheme(snapshot == nil ? nil : .dark))
         host.translatesAutoresizingMaskIntoConstraints = false
@@ -86,7 +87,7 @@ enum PreviewWindow {
         if let i = snapshot, i + 1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[i + 1]
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
-                let renderer = ImageRenderer(content: PopoverView(m: m)
+                let renderer = ImageRenderer(content: root.frame(width: 372)
                     .background(Color(white: 0.12))
                     .environment(\.colorScheme, .dark))
                 renderer.scale = 2
@@ -97,5 +98,31 @@ enum PreviewWindow {
                 NSApp.terminate(nil)
             }
         }
+    }
+}
+
+/// Settings live in a regular window: a long form doesn't belong in a menu bar popover,
+/// whose height is fixed when it opens.
+@MainActor
+enum SettingsWindow {
+    private static var window: NSWindow?
+
+    static func show(_ m: AppModel) {
+        if window == nil {
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+                             styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            w.title = "Impostazioni di BatteryOracle"
+            w.titlebarAppearsTransparent = true
+            w.isReleasedWhenClosed = false
+            let host = NSHostingView(rootView: SettingsView(m: m)
+                .padding(.horizontal, 20).padding(.bottom, 20).padding(.top, 36)
+                .frame(width: 400))
+            w.contentView = host
+            w.setContentSize(host.fittingSize)
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 }

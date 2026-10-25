@@ -68,6 +68,7 @@ struct HabitsView: View {
 
             Text(calibrationNote).font(.caption2).foregroundStyle(.tertiary).fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .card()
     }
 

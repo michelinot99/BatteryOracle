@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var m: AppModel
-    var close: () -> Void
 
     static let models = [("mistralai/Timestral-5M", "5M · istantaneo"),
                          ("mistralai/Timestral-28M", "28M · bilanciato"),
@@ -10,14 +9,6 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Button(action: close) { Label("Indietro", systemImage: "chevron.left") }.buttonStyle(.borderless)
-                Spacer()
-                Text("Impostazioni").font(.headline)
-                Spacer()
-                Color.clear.frame(width: 60, height: 1)
-            }
-
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(text: "Giornata")
                 row("Fine giornata", "flag.checkered") {
