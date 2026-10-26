@@ -68,7 +68,7 @@ struct SettingsView: View {
             .card()
 
             VStack(alignment: .leading, spacing: 10) {
-                Toggle(isOn: $m.showPercent) { Label("Percentuale nella barra dei menu", systemImage: "percent") }
+                Toggle(isOn: $m.showPercent) { Label("Percentuale dentro la batteria", systemImage: "percent") }
                 if m.canLaunchAtLogin {
                     Toggle(isOn: Binding(get: { m.launchAtLogin }, set: { m.launchAtLogin = $0 })) {
                         Label("Apri al login", systemImage: "power")

@@ -39,7 +39,8 @@ struct PopoverView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            LevelRing(level: m.battery?.level ?? 0, charging: m.battery?.charging ?? false)
+            LevelRing(level: m.battery?.level ?? 0, charging: m.battery?.charging ?? false,
+                      tint: m.batteryTint.color.map(Color.init(nsColor:)))
             VStack(alignment: .leading, spacing: 3) {
                 Text("Batteria").font(.headline)
                 Text(statusLine).font(.callout).foregroundStyle(.secondary)

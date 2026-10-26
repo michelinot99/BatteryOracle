@@ -149,6 +149,11 @@ final class AppModel: ObservableObject {
         Calendar.current.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: Date())!
     }
 
+    var batteryTint: BatteryTint {
+        if let b = battery, !b.charging, b.level <= threshold { return .low }
+        return lowPowerMode ? .lowPower : .normal
+    }
+
     /// Once today's end of day has passed, the question becomes tomorrow, after a night on the charger.
     var planningTomorrow: Bool { today(at: endOfDayMinutes) <= Date().addingTimeInterval(15 * 60) }
 

@@ -20,24 +20,13 @@ struct MenuBarLabel: View {
     @ObservedObject var m: AppModel
 
     var body: some View {
-        let level = m.battery?.level ?? 0
         let warn = m.outlook?.verdict == .charger && m.battery?.plugged == false
         HStack(spacing: 3) {
-            Image(systemName: warn ? "exclamationmark.triangle.fill" : symbol(level))
-            if m.showPercent { Text("\(Int(level))%").monospacedDigit() }
+            if warn { Image(systemName: "exclamationmark.triangle.fill") }
+            Image(nsImage: MenuBarBattery.image(level: m.battery?.level ?? 0, charging: m.battery?.charging == true,
+                                                showPercent: m.showPercent, tint: m.batteryTint))
         }
         .onAppear { PreviewWindow.showIfRequested(m) }
-    }
-
-    private func symbol(_ level: Double) -> String {
-        if m.battery?.charging == true { return "battery.100percent.bolt" }
-        switch level {
-        case ..<13: return "battery.0percent"
-        case ..<38: return "battery.25percent"
-        case ..<63: return "battery.50percent"
-        case ..<88: return "battery.75percent"
-        default: return "battery.100percent"
-        }
     }
 }
 

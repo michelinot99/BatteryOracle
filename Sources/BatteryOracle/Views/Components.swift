@@ -59,13 +59,15 @@ extension View {
 struct LevelRing: View {
     var level: Double
     var charging: Bool
+    var tint: Color?
     var body: some View {
+        let color = tint ?? levelColor(level)
         ZStack {
             Circle().stroke(.quaternary, lineWidth: 7)
             Circle()
                 .trim(from: 0, to: level / 100)
                 .stroke(
-                    AngularGradient(colors: [levelColor(level).opacity(0.65), levelColor(level)], center: .center,
+                    AngularGradient(colors: [color.opacity(0.65), color], center: .center,
                                     startAngle: .degrees(0), endAngle: .degrees(360 * level / 100)),
                     style: StrokeStyle(lineWidth: 7, lineCap: .round))
                 .rotationEffect(.degrees(-90))
