@@ -18,6 +18,7 @@ struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+            if m.battery != nil { lowPowerRow }
             if m.battery == nil {
                 noBattery
             } else if let o = m.outlook {
@@ -51,6 +52,26 @@ struct PopoverView: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    private var lowPowerRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: m.lowPowerMode ? "leaf.fill" : "leaf")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(m.lowPowerMode ? Color.yellow : Color.secondary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Risparmio energetico").font(.callout.weight(.medium))
+                Text(m.lowPowerMode ? "Attivo · il Mac consuma meno" : "Disattivato")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Toggle("", isOn: Binding(get: { m.lowPowerMode }, set: { _ in m.toggleLowPowerMode() }))
+                .labelsHidden().toggleStyle(.switch).controlSize(.small)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .help("Attiva o disattiva la modalità risparmio energetico di macOS")
     }
 
     private var statusLine: String {
@@ -97,11 +118,6 @@ struct PopoverView: View {
             }
             .font(.caption2).foregroundStyle(.secondary)
             Spacer()
-            Button { m.toggleLowPowerMode() } label: {
-                Image(systemName: m.lowPowerMode ? "leaf.fill" : "leaf").frame(width: 22, height: 22)
-                    .foregroundStyle(m.lowPowerMode ? Color.yellow : Color.secondary)
-            }
-            .help(m.lowPowerMode ? "Disattiva la modalità risparmio energetico" : "Attiva la modalità risparmio energetico")
             Button { m.forecastNow() } label: { Image(systemName: "arrow.clockwise").frame(width: 22, height: 22) }
                 .help("Ricalcola la previsione").disabled(m.isForecasting)
             Button { SettingsWindow.show(m) } label: { Image(systemName: "gearshape").frame(width: 22, height: 22) }
