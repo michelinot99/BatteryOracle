@@ -216,9 +216,9 @@ final class AppModel: ObservableObject {
 
     // MARK: - Settings actions
 
-    /// macOS offers no public API to flip Low Power Mode. If the Shortcuts app has "BatteryOracle risparmio on" and
-    /// "BatteryOracle risparmio off" (one "Imposta modalità risparmio energetico" action each) they are run, which
-    /// needs no password. Otherwise `pmset` runs as administrator and the system asks for the password every time.
+    /// macOS offers no public API to flip Low Power Mode. In order: `sudo -n pmset` (silent, works once the sudoers
+    /// rule from the README is installed), then Shortcuts ("BatteryOracle risparmio on"/"off"), then `pmset` as
+    /// administrator, where the system asks for the password every time.
     func toggleLowPowerMode() {
         let target = lowPowerMode ? 0 : 1
         Task.detached {
@@ -232,7 +232,8 @@ final class AppModel: ObservableObject {
                 p.waitUntilExit()
                 return p.terminationStatus == 0
             }
-            if !run("/usr/bin/shortcuts", ["run", "BatteryOracle risparmio \(target == 1 ? "on" : "off")"]) {
+            if !run("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-a", "lowpowermode", "\(target)"]),
+               !run("/usr/bin/shortcuts", ["run", "BatteryOracle risparmio \(target == 1 ? "on" : "off")"]) {
                 _ = run("/usr/bin/osascript", ["-e", "do shell script \"/usr/bin/pmset -a lowpowermode \(target)\" with administrator privileges"])
             }
             await MainActor.run { self.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled }

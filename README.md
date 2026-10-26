@@ -125,3 +125,14 @@ scripts/                 build della .app, icona, installazione del motore
 - Idea ispirata a un reel di [@mattbonfanti](https://www.instagram.com/mattbonfanti/).
 
 Codice rilasciato con [licenza MIT](LICENSE).
+
+## Risparmio energetico senza password
+
+Il pulsante a forma di foglia attiva e disattiva la modalità risparmio energetico con `pmset`, che richiede i permessi di root. Per non digitare la password a ogni clic, installa una regola `sudoers` limitata a quei due comandi:
+
+```sh
+t=$(mktemp) && echo "$(whoami) ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1" > $t \
+  && sudo visudo -cf $t && sudo install -m 440 -o root -g wheel $t /etc/sudoers.d/batteryoracle; rm -f $t
+```
+
+Per rimuoverla: `sudo rm /etc/sudoers.d/batteryoracle`. In alternativa, due comandi rapidi chiamati `BatteryOracle risparmio on` e `BatteryOracle risparmio off` (azione *Imposta modalità risparmio energetico*) funzionano senza password.

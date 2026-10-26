@@ -20,7 +20,7 @@ enum BatteryTint {
 enum MenuBarBattery {
     static func image(level: Double, charging: Bool, showPercent: Bool, tint: BatteryTint) -> NSImage {
         let body = CGSize(width: 27, height: 13)
-        let nub: CGFloat = 2, bolt: CGFloat = charging ? 8 : 0
+        let nub: CGFloat = 2, bolt: CGFloat = charging ? 12 : 0
         let size = NSSize(width: bolt + body.width + nub + 1, height: 16)
         let color = tint.color ?? .black
         let level = min(100, max(0, level))
