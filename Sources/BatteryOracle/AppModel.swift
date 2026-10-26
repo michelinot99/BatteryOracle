@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var engineError: String?
     @Published private(set) var installLog: String?
     @Published private(set) var calibration = 1.0
+    @Published private(set) var lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
     @Published var popoverOpen = false { didSet { if popoverOpen { refreshIfStale(maxAge: 600) } } }
 
     // Preferences
@@ -53,6 +54,9 @@ final class AppModel: ObservableObject {
 
         PowerSourceObserver.start()
         let nc = NotificationCenter.default, ws = NSWorkspace.shared.notificationCenter
+        nc.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled }
+        }
         nc.addObserver(forName: .powerSourceChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.sample(); self?.resimulate() }
         }
@@ -206,6 +210,21 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - Settings actions
+
+    /// macOS offers no public API to flip Low Power Mode, so this runs `pmset` as administrator
+    /// (the system asks for the password or Touch ID).
+    func toggleLowPowerMode() {
+        let target = lowPowerMode ? 0 : 1
+        Task.detached {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            p.arguments = ["-e", "do shell script \"/usr/bin/pmset -a lowpowermode \(target)\" with administrator privileges"]
+            p.standardError = FileHandle.nullDevice
+            try? p.run()
+            p.waitUntilExit()
+            await MainActor.run { self.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled }
+        }
+    }
 
     var launchAtLogin: Bool {
         get { SMAppService.mainApp.status == .enabled }

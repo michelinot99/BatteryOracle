@@ -96,6 +96,11 @@ struct PopoverView: View {
             }
             .font(.caption2).foregroundStyle(.secondary)
             Spacer()
+            Button { m.toggleLowPowerMode() } label: {
+                Image(systemName: m.lowPowerMode ? "leaf.fill" : "leaf").frame(width: 22, height: 22)
+                    .foregroundStyle(m.lowPowerMode ? Color.yellow : Color.secondary)
+            }
+            .help(m.lowPowerMode ? "Disattiva la modalità risparmio energetico" : "Attiva la modalità risparmio energetico")
             Button { m.forecastNow() } label: { Image(systemName: "arrow.clockwise").frame(width: 22, height: 22) }
                 .help("Ricalcola la previsione").disabled(m.isForecasting)
             Button { SettingsWindow.show(m) } label: { Image(systemName: "gearshape").frame(width: 22, height: 22) }
