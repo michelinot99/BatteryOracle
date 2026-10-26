@@ -61,9 +61,9 @@ Finché il motore Timestral non è installato, l'app usa un **profilo statistico
 | | |
 |---|---|
 | App a riposo | ~0% CPU, ~75 MB di memoria (SwiftUI + Swift Charts) |
-| Campionamento | lettura diretta di IOKit una volta al minuto, nessun processo esterno |
+| Campionamento | lettura diretta di IOKit ogni 2 minuti, nessun processo esterno; **nessuna attività a schermo spento** (coperchio chiuso, Power Nap): i risvegli parziali del Mac vengono ignorati |
 | Cambio alimentatore | notifica di sistema immediata, senza polling |
-| Previsione | ~2 s ogni 30 minuti a batteria, ogni ora all'alimentatore; il processo Python termina subito, quindi tra una previsione e l'altra **non resta niente in memoria** |
+| Previsione | ~2 s ogni ora a batteria, ogni 3 ore all'alimentatore (il livello di carica aggiorna comunque l'esito in tempo reale); il processo Python termina subito, quindi tra una previsione e l'altra **non resta niente in memoria** |
 | Timestral 5M | ~10 ms di inferenza, il resto è l'avvio di PyTorch; priorità *utility*, 2 thread |
 | Storico | CSV in append, ~1 MB per 30 giorni, compattato all'avvio |
 

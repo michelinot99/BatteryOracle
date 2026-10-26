@@ -31,6 +31,11 @@ final class AppModel: ObservableObject {
     let store: HistoryStore
     private var timers: [Timer] = []
     private var sleepWatts = 0.3
+    private var lastWakeHandled = Date.distantPast
+
+    /// False during dark wakes (Power Nap, mail checks…) and with the lid closed: macOS wakes the Mac
+    /// for a few seconds with the display off, and nobody is there to read an alert or benefit from a forecast.
+    private var userPresent: Bool { demo || CGDisplayIsAsleep(CGMainDisplayID()) == 0 }
 
     init() {
         store = HistoryStore(directory: TimestralEngine.support, demo: CommandLine.arguments.contains("--demo"))
@@ -38,11 +43,11 @@ final class AppModel: ObservableObject {
         rebuildBins()
         forecastNow()
 
-        // One light poll a minute; the system may coalesce it with other wake-ups.
-        let poll = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+        // One light poll every two minutes; the generous tolerance lets the system coalesce it with other wake-ups.
+        let poll = Timer(timeInterval: 120, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
-        poll.tolerance = 20
+        poll.tolerance = 60
         RunLoop.main.add(poll, forMode: .common)
         timers.append(poll)
 
@@ -52,24 +57,36 @@ final class AppModel: ObservableObject {
             Task { @MainActor in self?.sample(); self?.resimulate() }
         }
         ws.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.sample(kind: .sleep) }
-        }
-        ws.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
-                self?.sample(kind: .wake)
-                self?.rebuildBins()
-                self?.refreshIfStale(maxAge: 1200)
+                // Dark wakes end in another sleep: keep the original marker so the whole night counts as one sleep.
+                guard self?.store.samples.last?.kind != .sleep else { return }
+                self?.sample(kind: .sleep)
             }
         }
+        // A real wake brings the display up, possibly just after didWake, so listen to both.
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.handleWake() }
+            }
+        }
+    }
+
+    private func handleWake() {
+        guard userPresent, Date().timeIntervalSince(lastWakeHandled) > 5 else { return }
+        lastWakeHandled = Date()
+        if store.samples.last?.kind == .sleep { sample(kind: .wake) } else { sample() }
+        rebuildBins()
+        resimulate()
+        if !refreshIfStale(maxAge: 3600) { checkAlerts() }
     }
 
     // MARK: - Sampling
 
     private func tick() {
+        guard userPresent else { return }
         sample()
         resimulate()
-        refreshIfStale(maxAge: battery?.plugged == false ? 1800 : 3600)
-        checkAlerts()
+        if !refreshIfStale(maxAge: battery?.plugged == false ? 3600 : 3 * 3600) { checkAlerts() }
     }
 
     func sample(kind: Sample.Kind = .reading) {
@@ -95,9 +112,12 @@ final class AppModel: ObservableObject {
 
     // MARK: - Forecasting
 
-    func refreshIfStale(maxAge: TimeInterval) {
-        guard let f = forecast else { forecastNow(); return }
-        if Date().timeIntervalSince(f.created) > maxAge { forecastNow() }
+    /// Starts a new forecast if the current one is older than `maxAge`; returns whether one is on its way.
+    @discardableResult
+    func refreshIfStale(maxAge: TimeInterval) -> Bool {
+        if let f = forecast, Date().timeIntervalSince(f.created) <= maxAge { return false }
+        forecastNow()
+        return isForecasting
     }
 
     func forecastNow() {
@@ -117,6 +137,7 @@ final class AppModel: ObservableObject {
             }
             isForecasting = false
             resimulate()
+            checkAlerts()
         }
     }
 
@@ -157,12 +178,12 @@ final class AppModel: ObservableObject {
     }
 
     private func checkAlerts() {
-        guard let o = outlook, let b = battery, Bundle.main.bundleIdentifier != nil, !demo else { return }
+        guard userPresent, let o = outlook, let b = battery, Bundle.main.bundleIdentifier != nil, !demo else { return }
         let today = Date().formatted(.iso8601.year().month().day())
         let minutes = Calendar.current.component(.hour, from: Date()) * 60 + Calendar.current.component(.minute, from: Date())
         let end = endOfDay.formatted(date: .omitted, time: .shortened)
 
-        if morningAlert, lastMorningAlert != today, minutes >= morningMinutes, minutes < morningMinutes + 120 {
+        if morningAlert, lastMorningAlert != today, minutes >= morningMinutes, minutes < endOfDayMinutes {
             lastMorningAlert = today
             if o.verdict != .fine {
                 notify(o.verdict == .charger ? "Oggi porta il caricabatterie" : "Oggi potresti restare a secco",
