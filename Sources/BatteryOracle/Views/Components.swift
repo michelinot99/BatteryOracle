@@ -75,7 +75,6 @@ struct LevelRing: View {
             VStack(spacing: -2) {
                 if charging {
                     Image(systemName: "bolt.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(.yellow)
-                        .symbolEffect(.pulse)
                 }
                 Text("\(Int(level))").font(.system(size: 20, weight: .semibold, design: .rounded)).monospacedDigit()
                     .contentTransition(.numericText(value: level))

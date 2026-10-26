@@ -66,8 +66,18 @@ struct PopoverView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            Toggle("", isOn: Binding(get: { m.lowPowerMode }, set: { _ in m.toggleLowPowerMode() }))
-                .labelsHidden().toggleStyle(.switch).controlSize(.small)
+            // Drawn by hand: ImageRenderer (used for the README screenshots) can't render a native switch.
+            Button { m.toggleLowPowerMode() } label: {
+                Capsule().fill(m.lowPowerMode ? Color.green : Color.secondary.opacity(0.35))
+                    .frame(width: 34, height: 20)
+                    .overlay(alignment: m.lowPowerMode ? .trailing : .leading) {
+                        Circle().fill(.white).shadow(radius: 1, y: 0.5).padding(2)
+                    }
+                    .animation(.smooth(duration: 0.2), value: m.lowPowerMode)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Risparmio energetico")
+            .accessibilityValue(m.lowPowerMode ? "Attivo" : "Disattivato")
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
