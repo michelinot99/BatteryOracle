@@ -216,17 +216,25 @@ final class AppModel: ObservableObject {
 
     // MARK: - Settings actions
 
-    /// macOS offers no public API to flip Low Power Mode, so this runs `pmset` as administrator
-    /// (the system asks for the password or Touch ID).
+    /// macOS offers no public API to flip Low Power Mode. If the Shortcuts app has "BatteryOracle risparmio on" and
+    /// "BatteryOracle risparmio off" (one "Imposta modalità risparmio energetico" action each) they are run, which
+    /// needs no password. Otherwise `pmset` runs as administrator and the system asks for the password every time.
     func toggleLowPowerMode() {
         let target = lowPowerMode ? 0 : 1
         Task.detached {
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            p.arguments = ["-e", "do shell script \"/usr/bin/pmset -a lowpowermode \(target)\" with administrator privileges"]
-            p.standardError = FileHandle.nullDevice
-            try? p.run()
-            p.waitUntilExit()
+            func run(_ exe: String, _ args: [String]) -> Bool {
+                let p = Process()
+                p.executableURL = URL(fileURLWithPath: exe)
+                p.arguments = args
+                p.standardError = FileHandle.nullDevice
+                p.standardOutput = FileHandle.nullDevice
+                guard (try? p.run()) != nil else { return false }
+                p.waitUntilExit()
+                return p.terminationStatus == 0
+            }
+            if !run("/usr/bin/shortcuts", ["run", "BatteryOracle risparmio \(target == 1 ? "on" : "off")"]) {
+                _ = run("/usr/bin/osascript", ["-e", "do shell script \"/usr/bin/pmset -a lowpowermode \(target)\" with administrator privileges"])
+            }
             await MainActor.run { self.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled }
         }
     }

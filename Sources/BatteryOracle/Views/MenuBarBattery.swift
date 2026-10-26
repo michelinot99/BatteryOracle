@@ -41,12 +41,16 @@ enum MenuBarBattery {
             NSBezierPath(roundedRect: NSRect(x: rect.maxX + 1, y: rect.midY - 2.5, width: nub, height: 5),
                          xRadius: 1, yRadius: 1).fill()
 
-            if charging, let glyph = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
+            if charging, let symbol = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
                 .withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) {
-                let g = glyph.size
-                color.set()
-                glyph.draw(in: NSRect(x: 0, y: (size.height - g.height) / 2, width: g.width, height: g.height),
-                           from: .zero, operation: .sourceOver, fraction: 1)
+                // SF Symbols draw black; tint a copy so the bolt follows the icon's color.
+                let glyph = NSImage(size: symbol.size, flipped: false) { r in
+                    symbol.draw(in: r)
+                    color.setFill()
+                    r.fill(using: .sourceIn)
+                    return true
+                }
+                glyph.draw(in: NSRect(x: 0, y: (size.height - glyph.size.height) / 2, width: glyph.size.width, height: glyph.size.height))
             }
 
             if showPercent {
