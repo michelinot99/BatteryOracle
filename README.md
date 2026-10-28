@@ -5,148 +5,148 @@
 <h1 align="center">BatteryOracle</h1>
 
 <p align="center">
-  <b>Ti dice al mattino se oggi devi portarti il caricabatterie.</b><br>
-  App per la barra dei menu di macOS che impara come usi il Mac e prevede la batteria con
-  <a href="https://github.com/mistralai/timestral">Mistral Timestral</a>, in locale.
+  <b>Tells you in the morning whether you need to bring your charger today.</b><br>
+  A macOS menu bar app that learns how you use your Mac and forecasts battery life with
+  <a href="https://github.com/mistralai/timestral">Mistral Timestral</a>, running locally.
 </p>
 
 <p align="center">
-  <img src="docs/forecast.png" width="340" alt="Previsione">
+  <img src="docs/forecast.png" width="340" alt="Forecast">
   &nbsp;
-  <img src="docs/habits.png" width="340" alt="Abitudini">
+  <img src="docs/habits.png" width="340" alt="Habits">
 </p>
 
 <p align="center">
-  <img src="docs/menubar.png" width="720" alt="La batteria nella barra dei menu: normale, in carica, risparmio energetico, sotto soglia">
+  <img src="docs/menubar.png" width="720" alt="The battery in the menu bar: normal, charging, low power mode, below threshold">
 </p>
 
-> *English:* BatteryOracle is a macOS menu bar app that learns how much power your Mac draws through the day and uses Mistral's Timestral time-series model, running locally on the CPU, to tell you whether the battery will last until the evening, with a probability, not a guess.
+> BatteryOracle is a macOS menu bar app that learns how much power your Mac draws through the day and uses Mistral's Timestral time-series model, running locally on the CPU, to tell you whether the battery will last until the evening, with a probability, not a guess.
 
 ---
 
-## Cosa fa
+## What it does
 
-- **Verdetto con probabilità**: *Arrivi a fine giornata*, *Ce la fai, ma al limite* o *Porta il caricabatterie*, con la probabilità di arrivare all'orario scelto sopra la soglia minima.
-- **Grafico delle prossime ore**: livello reale delle ultime 12 ore, previsione mediana e due fasce di incertezza (80% e 50%), con passaggio del mouse per leggere ogni punto.
-- **Dopo la fine giornata**: la previsione guarda alle prossime 3 ore e all'autonomia rimasta, perché il Mac può restare acceso ancora a lungo. Torna sull'orario di fine giornata dopo l'ora dell'avviso del mattino.
-- **Abitudini**: consumo medio ora per ora, energia al giorno divisa tra batteria e alimentatore, ora di punta, autonomia tipica.
-- **Avvisi**: una notifica al mattino se la giornata sarà al limite, e un'altra se durante il giorno il ritmo non basta. Arrivano solo quando lo schermo è acceso: se scattano a Mac chiuso, aspettano che lo riapri.
-- **Salute batteria**: capacità residua, cicli e temperatura direttamente nel popover.
-- **Batteria nella barra dei menu in stile Apple**, con la percentuale dentro per occupare poco spazio. Diventa **gialla** con il risparmio energetico attivo e **rossa** sotto la soglia scelta; in carica compare il fulmine. Se a questo ritmo non arrivi a fine giornata, accanto alla batteria compare un triangolo di avviso, senza nasconderla.
-- **Interruttore del risparmio energetico** nel popover (vedi sotto).
-- Avvio al login, soglia e orari configurabili, percentuale dentro la batteria attivabile dalle impostazioni.
+- **Verdict with a probability**: *You'll make it to the end of the day*, *You'll make it, but it's close* or *Bring your charger*, with the probability of staying above the minimum threshold until the chosen time.
+- **Chart for the next few hours**: actual level over the last 12 hours, median forecast and two uncertainty bands (80% and 50%), with hover to read each point.
+- **After the end of the day**: the forecast shifts to the next 3 hours and the remaining battery life, since the Mac may stay on much longer. It switches back to the end-of-day forecast after the time of the morning alert.
+- **Habits**: average hour-by-hour consumption, daily energy split between battery and charger, peak usage hour, typical battery life.
+- **Alerts**: one notification in the morning if the day looks tight, and another during the day if the pace isn't holding up. They only arrive while the screen is on: if they would have fired while the Mac was closed, they wait until you reopen it.
+- **Battery health**: remaining capacity, cycle count and temperature right in the popover.
+- **Apple-style battery icon in the menu bar**, with the percentage inside to save space. It turns **yellow** when Low Power Mode is on and **red** below the chosen threshold; a lightning bolt appears while charging. If you won't make it to the end of the day at this pace, a warning triangle appears next to the battery, without hiding it.
+- **Low Power Mode switch** in the popover (see below).
+- Launch at login, configurable threshold and times, percentage-inside-the-icon toggle in settings.
 
-## Come funziona
+## How it works
 
 ```
- IOKit (AppleSmartBattery)          ogni 2 minuti: livello, alimentatore, consumo del sistema (W)
-          │                         + eventi di sospensione/risveglio
+ IOKit (AppleSmartBattery)          every 2 minutes: level, power source, system power draw (W)
+          │                         + sleep/wake events
           ▼
- history.csv  ─────────────▶  serie di potenza a 15 minuti (ultimi 30 giorni)
+ history.csv  ─────────────▶  15-minute power series (last 30 days)
                                          │
                                          ▼
-                Mistral Timestral  ◀── covariate note: ora del giorno, giorno della settimana, weekend
-                (processo Python breve)     covariata passata: alimentatore collegato
+                Mistral Timestral  ◀── known covariates: time of day, day of week, weekend
+                (short-lived Python process)  past covariate: plugged into power
                                          │
-                                         ▼  21 quantili di consumo per le prossime 26 ore
-                      simulazione della scarica  →  livello, orario della soglia, probabilità
+                                         ▼  21 consumption quantiles for the next 26 hours
+                      discharge simulation  →  level, time threshold is crossed, probability
 ```
 
-La scelta chiave è **prevedere il consumo, non la percentuale**. La percentuale dipende da quando attacchi il cavo, che è imprevedibile. Il consumo dipende da come lavori, che è molto regolare. Il Mac misura il consumo del sistema anche quando è collegato all'alimentatore (`PowerTelemetryData.SystemLoad`), quindi ogni minuto di utilizzo diventa un dato utile.
+The key choice is **forecasting power draw, not the percentage**. The percentage depends on when you plug in the cable, which is unpredictable. Power draw depends on how you work, which is very regular. The Mac measures system power draw even while plugged in (`PowerTelemetryData.SystemLoad`), so every minute of use becomes useful data.
 
-Da lì la batteria si simula: *livello = livello attuale − consumo previsto ÷ capacità in Wh*. Ogni quantile di consumo dà un percorso di livello, e la probabilità di arrivare a fine giornata è il quantile che arriva esattamente alla soglia. Le fasce sono volutamente prudenti, perché si assume che le ore più pesanti si sommino tra loro.
+From there the battery is simulated: *level = current level − forecast consumption ÷ capacity in Wh*. Each consumption quantile produces a level path, and the probability of reaching the end of the day is the quantile that lands exactly on the threshold. The bands are deliberately conservative, since they assume the heaviest hours stack up together.
 
-Due costanti si imparano dai tuoi dati:
-- **consumo in sospensione**, misurato sul calo della batteria durante le notti scollegate;
-- **calibrazione**, cioè il rapporto tra il calo reale della batteria e il consumo integrato. Corregge la stima dei Wh e le differenze di misura.
+Two constants are learned from your own data:
+- **sleep consumption**, measured from the battery drain during unplugged nights;
+- **calibration**, i.e. the ratio between the actual battery drop and the integrated power draw. It corrects the Wh estimate and measurement differences.
 
-Finché il motore Timestral non è installato, l'app usa un **profilo statistico**: i quantili del consumo nella stessa fascia oraria nei giorni simili delle ultime due settimane. Così funziona subito.
+Until the Timestral engine is installed, the app uses a **statistical profile**: power-draw quantiles for the same time slot on similar days over the last two weeks. So it works right away.
 
-## Efficienza
+## Efficiency
 
-Misurato sull'app installata, a riposo (macOS 27, Apple Silicon):
+Measured on the installed app, at rest (macOS 27, Apple Silicon):
 
 | | |
 |---|---|
-| App a riposo | **0% CPU, 0 risvegli, ~16 MB di memoria** (`footprint`, SwiftUI + Swift Charts) |
-| Campionamento | lettura diretta di IOKit ogni 2 minuti (tolleranza di 60 s, così il sistema la unisce ad altri risvegli), nessun processo esterno |
-| Mac chiuso | **nessuna attività a schermo spento**: i risvegli parziali del Mac (Power Nap, controlli di Mail e iCloud: migliaia al giorno) vengono ignorati, e la notte conta come un'unica sospensione nello storico |
-| Cambio alimentatore | notifica di sistema immediata, senza polling |
-| Previsione | ~2 s ogni ora a batteria, ogni 3 ore all'alimentatore (l'esito si aggiorna comunque con il livello reale a ogni lettura); il processo Python termina subito, quindi tra una previsione e l'altra **non resta niente in memoria** |
-| Timestral 5M | ~10 ms di inferenza, il resto è l'avvio di PyTorch; priorità *utility*, 2 thread |
-| Storico | CSV in append, ~1 MB per 30 giorni, compattato all'avvio |
+| App at rest | **0% CPU, 0 wakeups, ~16 MB of memory** (`footprint`, SwiftUI + Swift Charts) |
+| Sampling | direct IOKit read every 2 minutes (60 s tolerance, so the system coalesces it with other wakeups), no external process |
+| Mac closed | **no activity with the screen off**: the Mac's partial wakeups (Power Nap, Mail and iCloud checks: thousands per day) are ignored, and the night counts as a single sleep period in the history |
+| Power source change | immediate system notification, no polling |
+| Forecast | ~2 s per hour on battery, every 3 hours while plugged in (the outcome still updates with the real level on every reading); the Python process exits immediately, so **nothing stays in memory** between forecasts |
+| Timestral 5M | ~10 ms of inference, the rest is PyTorch startup; *utility* priority, 2 threads |
+| History | append-only CSV, ~1 MB for 30 days, compacted at launch |
 
-## Risparmio energetico senza password
+## Low Power Mode without a password
 
-Nel popover c'è un interruttore che attiva e disattiva la modalità risparmio energetico di macOS. Non esiste un'API pubblica per farlo, quindi l'app esegue `pmset`, che richiede i permessi di root. Per non digitare la password a ogni clic, installa una volta una regola `sudoers` limitata a quei due comandi esatti:
+The popover has a switch that turns macOS Low Power Mode on and off. There's no public API for this, so the app runs `pmset`, which requires root permissions. To avoid typing your password on every click, install a one-time `sudoers` rule limited to those two exact commands:
 
 ```sh
 t=$(mktemp) && echo "$(whoami) ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1" > $t \
   && sudo visudo -cf $t && sudo install -m 440 -o root -g wheel $t /etc/sudoers.d/batteryoracle; rm -f $t
 ```
 
-Per rimuoverla: `sudo rm /etc/sudoers.d/batteryoracle`.
+To remove it: `sudo rm /etc/sudoers.d/batteryoracle`.
 
-L'app prova, in ordine: `sudo -n pmset` (silenzioso, con la regola), due comandi rapidi chiamati `BatteryOracle risparmio on` e `BatteryOracle risparmio off` (azione *Imposta modalità risparmio energetico*, anche questi senza password) e infine `pmset` con la richiesta di password di sistema.
+The app tries, in order: `sudo -n pmset` (silent, with the rule), two quick commands called `BatteryOracle lowpowermode on` and `BatteryOracle lowpowermode off` (*Set Low Power Mode* action, also without a password), and finally `pmset` with a system password prompt.
 
-## Installazione
+## Installation
 
-Requisiti: macOS 14 o successivo, un Mac con batteria, gli strumenti da riga di comando di Xcode (`xcode-select --install`). Per il motore servono anche Python 3.10–3.13 (`brew install python@3.13`).
+Requirements: macOS 14 or later, a Mac with a battery, Xcode command line tools (`xcode-select --install`). The engine also needs Python 3.10–3.13 (`brew install python@3.13`).
 
 ```bash
 git clone https://github.com/migalella/BatteryOracle.git
 cd BatteryOracle
-make install      # compila BatteryOracle.app, la copia in /Applications e la avvia
+make install      # builds BatteryOracle.app, copies it to /Applications and launches it
 ```
 
-Poi installa il motore dalle impostazioni dell'app (**Installa Timestral**) oppure da terminale:
+Then install the engine from the app's settings (**Install Timestral**) or from the terminal:
 
 ```bash
 make engine
 ```
 
-Il motore va in `~/Library/Application Support/BatteryOracle/engine`: un ambiente Python privato con PyTorch e circa 1 GB in tutto. I pesi di Timestral 5M pesano 21 MB. Dalle impostazioni puoi passare ai modelli 28M o 123M.
+The engine lives in `~/Library/Application Support/BatteryOracle/engine`: a private Python environment with PyTorch, about 1 GB in total. Timestral 5M weights are 21 MB. You can switch to the 28M or 123M models from settings.
 
-> L'app è firmata ad-hoc. Al primo avvio, se macOS la blocca, aprila con clic destro → **Apri**.
+> The app is signed ad-hoc. On first launch, if macOS blocks it, open it with right-click → **Open**.
 
-### Provarla subito
+### Try it right away
 
 ```bash
 make demo
 ```
 
-Carica due settimane di utilizzo simulato e mostra il popover in una finestra.
+Loads two weeks of simulated usage and shows the popover in a window.
 
 ## Privacy
 
-Tutto resta sul Mac. Lo storico è in `~/Library/Application Support/BatteryOracle/history.csv` e il modello gira in locale. L'unico accesso alla rete è il download una tantum di PyTorch e dei pesi da Hugging Face durante l'installazione del motore.
+Everything stays on your Mac. The history is stored at `~/Library/Application Support/BatteryOracle/history.csv` and the model runs locally. The only network access is the one-time download of PyTorch and the weights from Hugging Face during engine installation.
 
-## Struttura
+## Structure
 
 ```
 Sources/BatteryOracle/
-  Battery.swift          lettura IOKit e notifiche del cambio di alimentazione
-  History.swift          log, serie a 15 minuti, sospensione, calibrazione, abitudini, demo
-  Forecaster.swift       motore Timestral, profilo statistico, simulazione della scarica
-  AppModel.swift         campionamento, pianificazione, notifiche, risparmio energetico, impostazioni
-  Views/                 popover, grafici, abitudini, impostazioni
-  Views/MenuBarBattery   l'icona della barra dei menu, disegnata a mano (percentuale dentro, colori)
-engine/forecast.py       richiesta JSON su stdin → quantili di consumo su stdout
-scripts/                 build della .app, icona, installazione del motore, render di docs/menubar.png
+  Battery.swift          IOKit reads and power-source-change notifications
+  History.swift          logging, 15-minute series, sleep handling, calibration, habits, demo
+  Forecaster.swift       Timestral engine, statistical profile, discharge simulation
+  AppModel.swift         sampling, scheduling, notifications, low power mode, settings
+  Views/                 popover, charts, habits, settings
+  Views/MenuBarBattery   the hand-drawn menu bar icon (percentage inside, colors)
+engine/forecast.py       JSON request on stdin → consumption quantiles on stdout
+scripts/                 .app build, icon, engine installation, docs/menubar.png rendering
 ```
 
-## Limiti noti
+## Known limitations
 
-- La capacità in Wh è stimata da mAh e tensione nominale delle celle; la calibrazione ne corregge l'errore dopo qualche scarica.
-- La telemetria `SystemLoad` è completa sui Mac Apple Silicon. Sui modelli Intel l'app usa la corrente della batteria, che è nota solo quando il Mac è scollegato.
-- A schermo spento (coperchio chiuso, o Mac fermo all'alimentatore con lo schermo inattivo) l'app non registra dati: i risvegli parziali non si distinguono dall'inattività, e registrarli falserebbe il consumo in sospensione. In modalità clamshell con monitor esterno funziona normalmente.
-- Il risparmio energetico richiede la regola `sudoers` per non chiedere la password (vedi sopra).
-- Le notifiche e l'avvio al login richiedono l'app installata come bundle (`make install`), non `swift run`.
-- Servono qualche ora di dati per la prima previsione e qualche giorno perché diventi affidabile.
+- Capacity in Wh is estimated from cell mAh and nominal voltage; calibration corrects the error after a few discharge cycles.
+- `SystemLoad` telemetry is complete on Apple Silicon Macs. On Intel models the app uses battery current, which is only known while the Mac is unplugged.
+- With the screen off (lid closed, or the Mac idle on power with the screen inactive) the app doesn't log data: partial wakeups can't be told apart from idle time, and logging them would skew sleep consumption. In clamshell mode with an external monitor it works normally.
+- Low Power Mode needs the `sudoers` rule to avoid a password prompt (see above).
+- Notifications and launch at login require the app installed as a bundle (`make install`), not `swift run`.
+- A few hours of data are needed for the first forecast, and a few days for it to become reliable.
 
-## Crediti
+## Credits
 
-- [Mistral Timestral](https://github.com/mistralai/timestral): codice di inferenza Apache-2.0, pesi con licenza Modified MIT di Mistral AI.
-- Idea ispirata a un reel di [@mattbonfanti](https://www.instagram.com/mattbonfanti/).
+- [Mistral Timestral](https://github.com/mistralai/timestral): inference code under Apache-2.0, weights under Mistral AI's Modified MIT license.
+- Idea inspired by a reel from [@mattbonfanti](https://www.instagram.com/mattbonfanti/).
 
-Codice rilasciato con [licenza MIT](LICENSE).
+Code released under the [MIT license](LICENSE).
