@@ -154,19 +154,27 @@ final class AppModel: ObservableObject {
         return lowPowerMode ? .lowPower : .normal
     }
 
-    /// Once today's end of day has passed, the question becomes tomorrow, after a night on the charger.
-    var planningTomorrow: Bool { today(at: endOfDayMinutes) <= Date().addingTimeInterval(15 * 60) }
+    /// How far ahead the outlook looks once the working day is over.
+    static let eveningHours = 3.0
+
+    /// From the end of day until the morning there is no finish line: the Mac may stay in use for hours more,
+    /// so the question becomes the next few hours rather than tomorrow.
+    var evening: Bool {
+        if today(at: endOfDayMinutes) <= Date().addingTimeInterval(15 * 60) { return true }
+        return morningMinutes < endOfDayMinutes && Date() < today(at: morningMinutes)
+    }
 
     var endOfDay: Date {
-        let end = today(at: endOfDayMinutes)
-        return planningTomorrow ? Calendar.current.date(byAdding: .day, value: 1, to: end)! : end
+        guard evening else { return today(at: endOfDayMinutes) }
+        // Rounded up to the quarter hour, so the target doesn't creep forward at every reading.
+        let t = Date().addingTimeInterval(Self.eveningHours * 3600).timeIntervalSince1970
+        return Date(timeIntervalSince1970: (t / 900).rounded(.up) * 900)
     }
 
     func resimulate() {
         guard let f = forecast, let b = battery else { return }
-        let morning = planningTomorrow ? Calendar.current.date(byAdding: .day, value: 1, to: today(at: morningMinutes)) : nil
-        outlook = Outlook(forecast: f, level: morning == nil ? b.level : 100, fullChargeWh: b.fullChargeWh,
-                          calibration: calibration, threshold: threshold, endOfDay: endOfDay, tomorrowFrom: morning)
+        outlook = Outlook(forecast: f, level: b.level, fullChargeWh: b.fullChargeWh, calibration: calibration,
+                          threshold: threshold, endOfDay: endOfDay, isEvening: evening)
     }
 
     /// Battery level over the last 12 hours, for the chart.
@@ -199,7 +207,7 @@ final class AppModel: ObservableObject {
                        "Alle \(end) si prevede il \(Int(o.levelAtEnd))%: \(Int(o.probability * 100))% di probabilità di arrivarci sopra il \(Int(threshold))%.")
             }
         }
-        if liveAlert, lastLiveAlert != today, !b.plugged, o.probability < 0.4, let when = o.reachesThreshold, when < endOfDay {
+        if liveAlert, lastLiveAlert != today, !evening, !b.plugged, o.probability < 0.4, let when = o.reachesThreshold, when < endOfDay {
             lastLiveAlert = today
             notify("A questo ritmo non arrivi alle \(end)",
                    "Scenderai sotto il \(Int(threshold))% verso le \(when.formatted(date: .omitted, time: .shortened)). Meglio ricaricare prima.")

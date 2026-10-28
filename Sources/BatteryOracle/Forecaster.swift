@@ -170,8 +170,8 @@ struct Outlook {
     var reachesThreshold: Date?      // median time the battery crosses the threshold
     var empty: Date?                 // median time the battery runs out
     var averageWatts: Double = 0     // forecast mean draw until end of day
-    var start: Date                  // when the simulated day starts (now, or tomorrow morning)
-    var isTomorrow = false
+    var start: Date                  // when the simulation starts
+    var isEvening = false            // past the end of day: endOfDay is a few hours from now
 
     enum Verdict { case fine, tight, charger }
     var verdict: Verdict { probability >= 0.85 ? .fine : probability >= 0.5 ? .tight : .charger }
@@ -180,11 +180,10 @@ struct Outlook {
     /// so the p-th power quantile gives the (1-p)-th level quantile (assumes the paths move together,
     /// which makes the bands deliberately conservative).
     init(forecast f: PowerForecast, level: Double, fullChargeWh: Double, calibration: Double,
-         threshold: Double, endOfDay: Date, now: Date = Date(), tomorrowFrom: Date? = nil) {
+         threshold: Double, endOfDay: Date, now: Date = Date(), isEvening: Bool = false) {
         self.endOfDay = endOfDay
-        let now = tomorrowFrom ?? now
         start = now
-        isTomorrow = tomorrowFrom != nil
+        self.isEvening = isEvening
         let pctPerWattStep = f.step / 3600 / fullChargeWh * 100 * calibration
         let firstStep = max(0, Int(((now.timeIntervalSince1970 - f.start) / f.step).rounded(.down)))
         guard firstStep < f.horizon else { return }

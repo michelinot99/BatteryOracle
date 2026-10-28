@@ -28,11 +28,11 @@
 
 - **Verdetto con probabilità**: *Arrivi a fine giornata*, *Ce la fai, ma al limite* o *Porta il caricabatterie*, con la probabilità di arrivare all'orario scelto sopra la soglia minima.
 - **Grafico delle prossime ore**: livello reale delle ultime 12 ore, previsione mediana e due fasce di incertezza (80% e 50%), con passaggio del mouse per leggere ogni punto.
-- **Pianifica domani**: dopo la fine giornata la previsione passa a domani, partendo carico all'ora del risveglio.
+- **Dopo la fine giornata**: la previsione guarda alle prossime 3 ore e all'autonomia rimasta, perché il Mac può restare acceso ancora a lungo. Torna sull'orario di fine giornata dopo l'ora dell'avviso del mattino.
 - **Abitudini**: consumo medio ora per ora, energia al giorno divisa tra batteria e alimentatore, ora di punta, autonomia tipica.
 - **Avvisi**: una notifica al mattino se la giornata sarà al limite, e un'altra se durante il giorno il ritmo non basta. Arrivano solo quando lo schermo è acceso: se scattano a Mac chiuso, aspettano che lo riapri.
 - **Salute batteria**: capacità residua, cicli e temperatura direttamente nel popover.
-- **Batteria nella barra dei menu in stile Apple**, con la percentuale dentro per occupare poco spazio. Diventa **gialla** con il risparmio energetico attivo e **rossa** sotto la soglia scelta; in carica compare il fulmine.
+- **Batteria nella barra dei menu in stile Apple**, con la percentuale dentro per occupare poco spazio. Diventa **gialla** con il risparmio energetico attivo e **rossa** sotto la soglia scelta; in carica compare il fulmine. Se a questo ritmo non arrivi a fine giornata, accanto alla batteria compare un triangolo di avviso, senza nasconderla.
 - **Interruttore del risparmio energetico** nel popover (vedi sotto).
 - Avvio al login, soglia e orari configurabili, percentuale dentro la batteria attivabile dalle impostazioni.
 

@@ -2,9 +2,10 @@
 // Run with: ./scripts/render-menubar.sh
 import AppKit
 
-let states: [(label: String, level: Double, charging: Bool, tint: BatteryTint)] = [
-    ("100%", 100, false, .normal), ("76%", 76, false, .normal), ("42%", 42, false, .normal),
-    ("in carica", 63, true, .normal), ("risparmio", 55, false, .lowPower), ("sotto soglia", 9, false, .low),
+let states: [(label: String, level: Double, charging: Bool, tint: BatteryTint, warning: Bool)] = [
+    ("100%", 100, false, .normal, false), ("76%", 76, false, .normal, false), ("42%", 42, false, .normal, false),
+    ("in carica", 63, true, .normal, false), ("non ci arrivi", 34, false, .normal, true),
+    ("risparmio", 55, false, .lowPower, false), ("sotto soglia", 9, false, .low, false),
 ]
 let scale: CGFloat = 4, cell: CGFloat = 78, rowH: CGFloat = 44
 let size = NSSize(width: cell * CGFloat(states.count), height: rowH * 2)
@@ -22,7 +23,7 @@ for (row, dark) in [(1, false), (0, true)] {
     NSRect(x: 0, y: y, width: size.width, height: rowH).fill()
     let ink: NSColor = dark ? .white : .black
     for (i, s) in states.enumerated() {
-        let icon = MenuBarBattery.image(level: s.level, charging: s.charging, showPercent: true, tint: s.tint)
+        let icon = MenuBarBattery.image(level: s.level, charging: s.charging, showPercent: true, tint: s.tint, warning: s.warning)
         // Template icons are recolored by macOS; do the same here.
         let drawn = icon.isTemplate ? NSImage(size: icon.size, flipped: false) { r in
             icon.draw(in: r)

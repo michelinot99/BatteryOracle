@@ -21,12 +21,9 @@ struct MenuBarLabel: View {
 
     var body: some View {
         let warn = m.outlook?.verdict == .charger && m.battery?.plugged == false
-        HStack(spacing: 3) {
-            if warn { Image(systemName: "exclamationmark.triangle.fill") }
-            Image(nsImage: MenuBarBattery.image(level: m.battery?.level ?? 0, charging: m.battery?.charging == true,
-                                                showPercent: m.showPercent, tint: m.batteryTint))
-        }
-        .onAppear { PreviewWindow.showIfRequested(m) }
+        Image(nsImage: MenuBarBattery.image(level: m.battery?.level ?? 0, charging: m.battery?.charging == true,
+                                            showPercent: m.showPercent, tint: m.batteryTint, warning: warn))
+            .onAppear { PreviewWindow.showIfRequested(m) }
     }
 }
 

@@ -15,11 +15,14 @@ extension Outlook.Verdict {
         case .charger: "powerplug.fill"
         }
     }
-    var title: String {
-        switch self {
-        case .fine: "Arrivi a fine giornata"
-        case .tight: "Ce la fai, ma al limite"
-        case .charger: "Porta il caricabatterie"
+    func title(evening: Bool) -> String {
+        switch (self, evening) {
+        case (.fine, false): "Arrivi a fine giornata"
+        case (.tight, false): "Ce la fai, ma al limite"
+        case (.charger, false): "Porta il caricabatterie"
+        case (.fine, true): "Batteria per le prossime ore"
+        case (.tight, true): "Prossime ore al limite"
+        case (.charger, true): "Ricarica a breve"
         }
     }
 }

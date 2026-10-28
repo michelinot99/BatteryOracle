@@ -163,7 +163,7 @@ struct VerdictCard: View {
                     .symbolEffect(.bounce, value: o.verdict)
                     .frame(width: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(o.verdict.title).font(.title3.weight(.semibold))
+                    Text(o.verdict.title(evening: o.isEvening)).font(.title3.weight(.semibold))
                     Text(subtitle).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -182,7 +182,7 @@ struct VerdictCard: View {
 
     private var subtitle: String {
         let plugged = m.battery?.plugged == true
-        let lead = o.isTomorrow ? "Domani, partendo carico alle \(o.start.hm): " : plugged ? "Se stacchi ora, " : ""
+        let lead = plugged ? "Se stacchi ora, " : ""
         let p = Int((o.probability * 100).rounded())
         switch o.verdict {
         case .fine: return "\(lead)\(p)% di probabilità di arrivare alle \(o.endOfDay.hm) sopra il \(Int(m.threshold))%."
@@ -215,7 +215,7 @@ struct ProbabilityDial: View {
             Text("prob.").font(.system(size: 8)).foregroundStyle(.secondary).offset(y: 17)
         }
         .frame(width: 42, height: 42)
-        .help("Probabilità di arrivare a fine giornata sopra la soglia")
+        .help("Probabilità di arrivare all'orario indicato sopra la soglia")
     }
 }
 
@@ -229,15 +229,15 @@ struct ForecastChart: View {
     private var hover: Date? { hoverState.date }
 
     var body: some View {
-        let history = o.isTomorrow ? [] : m.recentLevels
-        let start = o.isTomorrow ? o.start.addingTimeInterval(-1800) : history.first?.date ?? Date().addingTimeInterval(-12 * 3600)
+        let history = m.recentLevels
+        let start = history.first?.date ?? Date().addingTimeInterval(-12 * 3600)
         let end = max(o.endOfDay.addingTimeInterval(3 * 3600), o.start.addingTimeInterval(12 * 3600))
         let points = o.points.filter { $0.date <= end }
         let accent = o.verdict.color
 
         VStack(alignment: .leading, spacing: 16) {
-            SectionTitle(text: o.isTomorrow ? "Domani" : "Prossime ore",
-                         trailing: o.isTomorrow ? "parti al 100% alle \(o.start.hm)" : m.battery?.plugged == true ? "ipotesi: stacchi ora" : "fascia 80% e 50%")
+            SectionTitle(text: "Prossime ore",
+                         trailing: m.battery?.plugged == true ? "ipotesi: stacchi ora" : "fascia 80% e 50%")
             Chart {
                 RectangleMark(xStart: .value("", start), xEnd: .value("", end), yStart: .value("", 0), yEnd: .value("", m.threshold))
                     .foregroundStyle(.red.opacity(0.07))
@@ -263,7 +263,7 @@ struct ForecastChart: View {
                 RuleMark(x: .value("Adesso", o.start))
                     .foregroundStyle(.secondary.opacity(0.6))
                     .annotation(position: .top, alignment: .center, spacing: 2) {
-                        Text(o.isTomorrow ? "sveglia" : "ora").font(.system(size: 9)).foregroundStyle(.secondary)
+                        Text("ora").font(.system(size: 9)).foregroundStyle(.secondary)
                     }
                 RuleMark(x: .value("Fine giornata", o.endOfDay))
                     .foregroundStyle(accent.opacity(0.7))

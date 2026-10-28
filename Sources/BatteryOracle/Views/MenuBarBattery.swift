@@ -16,11 +16,13 @@ enum BatteryTint {
 /// Draws the menu bar battery the way macOS does: a rounded body with the percentage inside it,
 /// the charged part solid and the rest dimmed. The digits are knocked out of the shape, so they stay
 /// legible on any menu bar. Untinted icons are template images (macOS recolors them for light and dark
-/// menu bars); tinted ones carry their own color.
+/// menu bars); tinted ones carry their own color. A warning triangle can sit where the charging bolt goes:
+/// MenuBarExtra shows only the first image of its label, so it has to be part of the same image as the battery.
 enum MenuBarBattery {
-    static func image(level: Double, charging: Bool, showPercent: Bool, tint: BatteryTint) -> NSImage {
+    static func image(level: Double, charging: Bool, showPercent: Bool, tint: BatteryTint, warning: Bool = false) -> NSImage {
         let body = CGSize(width: 27, height: 13)
-        let nub: CGFloat = 2, bolt: CGFloat = charging ? 12 : 0
+        let lead = charging ? "bolt.fill" : warning ? "exclamationmark.triangle.fill" : nil
+        let nub: CGFloat = 2, bolt: CGFloat = charging ? 12 : warning ? 15 : 0
         let size = NSSize(width: bolt + body.width + nub + 1, height: 16)
         let color = tint.color ?? .black
         let level = min(100, max(0, level))
@@ -41,9 +43,9 @@ enum MenuBarBattery {
             NSBezierPath(roundedRect: NSRect(x: rect.maxX + 1, y: rect.midY - 2.5, width: nub, height: 5),
                          xRadius: 1, yRadius: 1).fill()
 
-            if charging, let symbol = NSImage(systemSymbolName: "bolt.fill", accessibilityDescription: nil)?
-                .withSymbolConfiguration(.init(pointSize: 10, weight: .bold)) {
-                // SF Symbols draw black; tint a copy so the bolt follows the icon's color.
+            if let lead, let symbol = NSImage(systemSymbolName: lead, accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: charging ? 10 : 9.5, weight: .bold)) {
+                // SF Symbols draw black; tint a copy so the glyph follows the icon's color.
                 let glyph = NSImage(size: symbol.size, flipped: false) { r in
                     symbol.draw(in: r)
                     color.setFill()
