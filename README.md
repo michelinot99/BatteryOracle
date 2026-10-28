@@ -94,7 +94,7 @@ L'app prova, in ordine: `sudo -n pmset` (silenzioso, con la regola), due comandi
 Requisiti: macOS 14 o successivo, un Mac con batteria, gli strumenti da riga di comando di Xcode (`xcode-select --install`). Per il motore servono anche Python 3.10–3.13 (`brew install python@3.13`).
 
 ```bash
-git clone https://github.com/michelinot99/BatteryOracle.git
+git clone https://github.com/migalella/BatteryOracle.git
 cd BatteryOracle
 make install      # compila BatteryOracle.app, la copia in /Applications e la avvia
 ```
